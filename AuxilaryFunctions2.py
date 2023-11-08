@@ -597,11 +597,11 @@ def generateRandomConfiguration(fishInView, fishInEdges, OverlappingFish):
                     overLappingFishVectList.append(fishVect)
                     break
 
-        fish_list = []
-        # Transforming the fish vectors into fish objects
-        for fishVect in fishVectList + overLappingFishVectList:
-            fish = Fish(fishVect)
-            fish_list.append(fish)
+    fish_list = []
+    # Transforming the fish vectors into fish objects
+    for fishVect in fishVectList + overLappingFishVectList:
+        fish = Fish(fishVect)
+        fish_list.append(fish)
 
     # return fishVectList, overLappingFishVectList
     return fish_list
@@ -728,27 +728,6 @@ class Fish:
             return False
 
 
-def drawAquarium(fish_list):
-    views_list = []
-
-    # drawing the fishes
-    for fish in fish_list:
-        fish.draw()
-        views_list.append(fish.views)
-
-    # merging the images
-    finalViews = mergeViews(views_list)
-
-    # updating the visibility for the cases where a fish ends up covering another fish
-    for fish in fish_list:
-        fish.update_visibility(finalViews)
-
-    finalView1 = finalViews[0]
-    canvas = finalView1[0]
-
-    return canvas
-
-
 def add_noise_static_noise(im):
     # Adding gaussian noise
     filter_size = 2 * roundHalfUp(np.random.rand()) + 3
@@ -835,93 +814,124 @@ def add_patchy_noise(im, fish_list):
     return im
 
 
-def save_annotations(frame_idx, fish_list):
-    biggestIdx4TrainingData = Config.biggestIdx4TrainingData
-    dataDirectory = Config.dataDirectory
+class Aquarium:
+    def __init__(self, frame_idx):
+        # Getting the configuration settings
+        maxFishesInView = Config.maxFishesInView
+        averageFishInEdges = Config.averageFishInEdges
+        overlappingFishFrequency = Config.overlappingFishFrequency
+        self.shouldAddStaticNoise = Config.shouldAddStaticNoise
+        self.shouldAddPatchyNoise = Config.shouldAddStaticNoise
+        self.shouldSaveAnnotations = Config.shouldSaveAnnotations
+        self.shouldSaveImages = Config.shouldSaveImages
 
-    subFolder = 'train/' if frame_idx < biggestIdx4TrainingData else 'val/'
-    labelsPath = dataDirectory + '/' + 'labels/' + subFolder
-    strIdxInFormat = format(frame_idx, '06d')
-    filename = 'zebrafish_' + strIdxInFormat + '.txt'
-    labelsPath += filename
+        fishesInView = np.random.randint(0, maxFishesInView)
+        fishesInEdge = np.random.poisson(averageFishInEdges)
+        overlappingFish = 0
+        for _ in range(fishesInView + fishesInEdge):
+            shouldItOverlap = True if np.random.rand() < overlappingFishFrequency else False
+            if shouldItOverlap: overlappingFish += 1
 
-    # Creating the annotations
-    f = open(labelsPath, 'w')
+        self.fish_list = generateRandomConfiguration(fishesInView, fishesInEdge, overlappingFish)
+        self.views_list = []
+        self.finalViews = []
+        self.frame_idx = frame_idx
+        # NOTE: the following variable is more of a constant
+        self.amount_of_cameras = 1
 
-    for fish in (fish_list):
-        # for fish in (fishVectList + overlappingFishVectList):
-        boundingBox = fish.boundingBox
+    def add_static_noise_to_views(self):
+        for viewIdx, view in enumerate(self.finalViews):
+            graymodel = view[0]
+            depth = view[1]
+            noisey_graymodel = add_noise_static_noise(graymodel)
+            # TODO: dont use tuples since they are immutable
+            noisey_view = (noisey_graymodel, depth)
+            # updating
+            self.finalViews[viewIdx] = noisey_view
 
-        # Should add a method to the bounding box, boundingBox.isSmallFishOnEdge()
-        if fish.is_valid_fish:
-            f.write(str(0) + ' ')
-            f.write(str(boundingBox.getCenterX() / imageSizeX) + ' ' + str(boundingBox.getCenterY() / imageSizeY) + ' ')
-            f.write(str(boundingBox.getWidth() / imageSizeX) + ' ' + str(boundingBox.getHeight() / imageSizeY) + ' ')
+    def add_patchy_noise_to_views(self):
+        for viewIdx, view in enumerate(self.finalViews):
+            graymodel = view[0]
+            depth = view[1]
+            noisey_graymodel = add_patchy_noise(graymodel, self.fish_list)
+            # TODO: dont use tuples since they are immutable
+            noisey_view = (noisey_graymodel, depth)
+            # updating
+            self.finalViews[viewIdx] = noisey_view
 
-            xArr = fish.xs
-            yArr = fish.ys
-            vis = fish.vis
-            for pointIdx in range(12):
-                # Visibility is set to zero if they are out of bounds
-                # Just got to clip them so that YOLO does not throw an error
-                x = np.clip(xArr[pointIdx], 0, imageSizeX - 1)
-                y = np.clip(yArr[pointIdx], 0, imageSizeY - 1)
-                f.write(str(x / imageSizeX) + ' ' + str(y / imageSizeY)
-                        + ' ' + str(int(vis[pointIdx])) + ' ')
-            f.write('\n')
+    def save_annotations(self):
+        biggestIdx4TrainingData = Config.biggestIdx4TrainingData
+        dataDirectory = Config.dataDirectory
 
+        subFolder = 'train/' if self.frame_idx < biggestIdx4TrainingData else 'val/'
+        labelsPath = dataDirectory + '/' + 'labels/' + subFolder
+        strIdxInFormat = format(self.frame_idx, '06d')
+        filename = 'zebrafish_' + strIdxInFormat + '.txt'
+        labelsPath += filename
 
-def save_image(frame_idx, im):
-    biggestIdx4TrainingData = Config.biggestIdx4TrainingData
-    dataDirectory = Config.dataDirectory
+        # Creating the annotations
+        f = open(labelsPath, 'w')
 
-    subFolder = 'train/' if frame_idx < biggestIdx4TrainingData else 'val/'
-    imagesPath = dataDirectory + '/' + 'images/' + subFolder
-    strIdxInFormat = format(frame_idx, '06d')
-    filename = 'zebrafish_' + strIdxInFormat + '.png'
-    imagesPath += filename
-    cv.imwrite(imagesPath, im)
+        for fish in (self.fish_list):
+            # for fish in (fishVectList + overlappingFishVectList):
+            boundingBox = fish.boundingBox
 
+            # Should add a method to the bounding box, boundingBox.isSmallFishOnEdge()
+            if fish.is_valid_fish:
+                f.write(str(0) + ' ')
+                f.write(
+                    str(boundingBox.getCenterX() / imageSizeX) + ' ' + str(boundingBox.getCenterY() / imageSizeY) + ' ')
+                f.write(
+                    str(boundingBox.getWidth() / imageSizeX) + ' ' + str(boundingBox.getHeight() / imageSizeY) + ' ')
 
-def generate_and_save_data(frame_idx):
-    # Calling the variables from the configuration file
-    maxFishesInView = Config.maxFishesInView
-    averageFishInEdges = Config.averageFishInEdges
-    overlappingFishFrequency = Config.overlappingFishFrequency
-    shouldAddStaticNoise = Config.shouldAddStaticNoise
-    shouldAddPatchyNoise = Config.shouldAddStaticNoise
-    shouldSaveAnnotations = Config.shouldSaveAnnotations
-    shouldSaveImages = Config.shouldSaveImages
+                xArr = fish.xs
+                yArr = fish.ys
+                vis = fish.vis
+                for pointIdx in range(12):
+                    # Visibility is set to zero if they are out of bounds
+                    # Just got to clip them so that YOLO does not throw an error
+                    x = np.clip(xArr[pointIdx], 0, imageSizeX - 1)
+                    y = np.clip(yArr[pointIdx], 0, imageSizeY - 1)
+                    f.write(str(x / imageSizeX) + ' ' + str(y / imageSizeY)
+                            + ' ' + str(int(vis[pointIdx])) + ' ')
+                f.write('\n')
 
-    fishesInView = np.random.randint(0, maxFishesInView)
-    fishesInEdge = np.random.poisson(averageFishInEdges)
-    overlappingFish = 0
-    for _ in range(fishesInView + fishesInEdge):
-        shouldItOverlap = True if np.random.rand() < overlappingFishFrequency else False
-        if shouldItOverlap: overlappingFish += 1
+    def save_image(self):
+        biggestIdx4TrainingData = Config.biggestIdx4TrainingData
+        dataDirectory = Config.dataDirectory
 
-    fish_list = generateRandomConfiguration(fishesInView, fishesInEdge, overlappingFish)
+        subFolder = 'train/' if self.frame_idx < biggestIdx4TrainingData else 'val/'
+        imagesPath = dataDirectory + '/' + 'images/' + subFolder
+        strIdxInFormat = format(self.frame_idx, '06d')
+        filename = 'zebrafish_' + strIdxInFormat + '.png'
+        imagesPath += filename
+        cv.imwrite(imagesPath, self.finalViews[0][0])
 
-    im = drawAquarium(fish_list)
+    def draw(self):
+        # drawing the fishes
+        for fish in self.fish_list:
+            fish.draw()
+            self.views_list.append(fish.views)
 
-    if shouldAddStaticNoise:
-        im = add_noise_static_noise(im)
+        # merging the images
+        if len(self.views_list) != 0:
+            self.finalViews = mergeViews(self.views_list)
+        else:
+            for viewIdx in range(self.amount_of_cameras):
+                view = (np.zeros((imageSizeY, imageSizeX)), np.zeros((imageSizeY, imageSizeX)))
+                self.finalViews.append(view)
 
-    if shouldAddPatchyNoise:
-        im = add_patchy_noise(im, fish_list)
+        # updating the visibility for the cases where a fish ends up covering another fish
+        for fishIdx, fish in enumerate(self.fish_list):
+            fish.update_visibility(self.finalViews)
+            # You have update the fish list, because python is wierd
+            self.fish_list[fishIdx] = fish
 
-    if shouldSaveAnnotations:
-        save_annotations(frame_idx, fish_list)
+        if self.shouldAddStaticNoise:
+            self.add_static_noise_to_views()
 
-    if shouldSaveImages:
-        save_image(frame_idx, im)
-
-
-
-
-
-
-
+        if self.shouldAddPatchyNoise:
+            self.add_patchy_noise_to_views()
 
 
 

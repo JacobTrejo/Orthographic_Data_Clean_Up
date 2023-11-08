@@ -1,5 +1,6 @@
 from Config import Config
-from AuxilaryFunctions2 import generate_and_save_data
+# from AuxilaryFunctions2 import generate_and_save_data
+from AuxilaryFunctions2 import Aquarium
 import os
 import shutil
 
@@ -7,6 +8,12 @@ import multiprocessing
 from multiprocessing import  Pool,cpu_count
 import numpy as np
 import time
+
+def genData(idx):
+    aquarium = Aquarium(idx)
+    aquarium.draw()
+    aquarium.save_image()
+    aquarium.save_annotations()
 
 # homepath = 'data/'
 homepath = Config.dataDirectory
@@ -30,8 +37,8 @@ for folder in folders:
        if not os.path.exists(subSubPath):
            os.makedirs(subSubPath)
 
-
-generate_and_save_data(21)
+genData(23)
+# generate_and_save_data(22)
 
 # def init_pool_process():
 #     np.random.seed()

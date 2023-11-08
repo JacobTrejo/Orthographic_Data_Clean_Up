@@ -118,7 +118,7 @@ def draw_YOLO_pose_annotations(imageFilePath):
 
     return catResults
 
-imageFilePath = 'data/images/train/zebrafish_000022.png'
+imageFilePath = 'data/images/train/zebrafish_000023.png'
 result = draw_YOLO_pose_annotations(imageFilePath)
 cv.imwrite('test.png', result)
 

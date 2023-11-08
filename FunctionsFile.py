@@ -1,3 +1,4 @@
+from Config import Config
 import numpy as np
 import numpy.ma as ma
 import cv2 as cv
@@ -66,7 +67,10 @@ def mergeGreys(grays, depths):
     if amountOfFishes == 1:
         return grays[0], depths[0]
     if amountOfFishes == 0 :
-        return np.zeros((grays.shape[1:3])), np.zeros((grays.shape[1:3]))
+        # return np.zeros((grays.shape[1:3])), np.zeros((grays.shape[1:3]))
+        return np.zeros((Config.imageSizeY, Config.imageSizeX)), \
+                np.zeros((Config.imageSizeY, Config.imageSizeX))
+
 
     threshold = 25
     mergedGrays, mergedDepths, indices = mergeGreysExactly(grays, depths)
