@@ -91,3 +91,26 @@ def mergeGreys(grays, depths):
 
     # NOTE: we could technically also blurr the depths?
     return mergedGrays, mergedDepths
+
+def mergeViews(views_list):
+    finalViews = []
+    amount_of_cameras = len(views_list[0])
+    amount_of_fish = len(views_list)
+    for camera_idx in range(amount_of_cameras):
+        # Getting the views with respect to each camera
+        im_list = []
+        depth_im_list = []
+        for fish_idx in range(amount_of_fish):
+            im = views_list[fish_idx][camera_idx][0]
+            depth_im = views_list[fish_idx][camera_idx][1]
+
+            im_list.append(im)
+            depth_im_list.append(depth_im)
+
+        grays = np.array(im_list)
+        depths = np.array(depth_im_list)
+
+        finalGray, finalDepth = mergeGreys(grays, depths)
+        finalView = (finalGray, finalDepth)
+        finalViews.append(finalView)
+    return finalViews

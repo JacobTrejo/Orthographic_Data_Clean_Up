@@ -1,5 +1,5 @@
 from Config import Config
-from AuxilaryFunctions import generate_and_save_data
+from AuxilaryFunctions2 import generate_and_save_data
 import os
 import shutil
 
@@ -31,23 +31,23 @@ for folder in folders:
            os.makedirs(subSubPath)
 
 
-# generate_and_save_data(22)
+generate_and_save_data(22)
 
-def init_pool_process():
-    np.random.seed()
-
-if __name__ == '__main__':
-    # multiprocessing case
-    print('Process Starting')
-    startTime = time.time()
-    amount = Config.amountOfData
-    pool_obj = multiprocessing.Pool(initializer=init_pool_process)
-    pool_obj.map(generate_and_save_data, range(0,amount))
-    pool_obj.close()
-    endTime = time.time()
-
-    print('Finish Running')
-    print('Average Time: ' + str((endTime - startTime)/amount))
+# def init_pool_process():
+#     np.random.seed()
+#
+# if __name__ == '__main__':
+#     # multiprocessing case
+#     print('Process Starting')
+#     startTime = time.time()
+#     amount = Config.amountOfData
+#     pool_obj = multiprocessing.Pool(initializer=init_pool_process)
+#     pool_obj.map(generate_and_save_data, range(0,amount))
+#     pool_obj.close()
+#     endTime = time.time()
+#
+#     print('Finish Running')
+#     print('Average Time: ' + str((endTime - startTime)/amount))
 
 
 

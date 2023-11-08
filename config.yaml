@@ -7,8 +7,8 @@ averageSizeOfFish: 70
 dataDirectory: 'data'
 
 shouldAddPatchyNoise: True
-
+shouldAddStaticNoise: True
 # Small values for debugging purposes
-amountOfData: 5
+amountOfData: 30
 fractionForTraining: 1
 

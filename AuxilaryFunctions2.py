@@ -224,7 +224,7 @@ def doesThisFishInterfereWithTheAquarium(fishVect, fishVectList):
     for fishVectIdx in range(fishVectList.shape[0]):
         fishVect = fishVectList[fishVectIdx, ...]
 
-        seglen, x = fishVect[0], fishVect[1:]
+        seglen, z, x = fishVect[0], fishVect[1], fishVect[2:]
         pt = x_seglen_to_3d_points(x, seglen)
         boxes_covering_fish = addBoxes(pt)
 
@@ -302,7 +302,7 @@ def isThisAGoodFishVectList(fishVectList):
     for fishVectIdx in range(fishVectList.shape[0]):
         fishVect = fishVectList[fishVectIdx, ...]
 
-        seglen, x = fishVect[0], fishVect[1:]
+        seglen, z, x = fishVect[0], fishVect[1], fishVect[2:]
         pt = x_seglen_to_3d_points(x, seglen)
         boxes_covering_fish = addBoxes(pt)
 
@@ -435,6 +435,8 @@ def generateRandomConfiguration(fishInView, fishInEdges, OverlappingFish):
             idxlen = np.floor((fishlen - 62) / 1.05) + 1
             seglen = 5.6 + idxlen * 0.1
             seglen = seglen[0]
+            # These fish are on the top plane
+            z = 1
             # seglen = 7.1
 
             x, y = np.random.randint(0, imageSizeX), np.random.randint(0, imageSizeY)
@@ -443,9 +445,10 @@ def generateRandomConfiguration(fishInView, fishInEdges, OverlappingFish):
             xVect[:2] = [x, y]
             xVect[2] = np.random.rand(1)[0] * 2 * np.pi
             xVect[3:] = dtheta
-            fishVect = np.zeros((12))
+            fishVect = np.zeros((13))
             fishVect[0] = seglen
-            fishVect[1:] = xVect
+            fishVect[1] = z
+            fishVect[2:] = xVect
 
             # Checking if it is in bounds
             pts = x_seglen_to_3d_points(xVect, seglen)
@@ -506,9 +509,10 @@ def generateRandomConfiguration(fishInView, fishInEdges, OverlappingFish):
             idxlen = np.floor((fishlen - 62) / 1.05) + 1
             seglen = 5.6 + idxlen * 0.1
             seglen = seglen[0]
-            fishVect = np.zeros((12))
+            fishVect = np.zeros((13))
             fishVect[0] = seglen
-            fishVect[1:] = xVect
+            fishVect[1] = 1
+            fishVect[2:] = xVect
 
             pts = x_seglen_to_3d_points(xVect, seglen)
             is_on_edge = is_fish_on_edge(pts)
@@ -535,7 +539,7 @@ def generateRandomConfiguration(fishInView, fishInEdges, OverlappingFish):
 
         fishVectToOverlap = fishVectList[fishesToOverlapIdices[overLappingFishIdx]]
         ogSeglen = fishVectToOverlap[0]
-        ogXVect = fishVectToOverlap[1:]
+        ogXVect = fishVectToOverlap[2:]
         ogPts = x_seglen_to_3d_points(ogXVect, ogSeglen)
 
         startTime = time.time()
@@ -567,9 +571,11 @@ def generateRandomConfiguration(fishInView, fishInEdges, OverlappingFish):
             xVect[:2] = [x, y]
             xVect[2] = np.random.rand(1)[0] * 2 * np.pi
             xVect[3:] = dtheta
-            fishVect = np.zeros((12))
+            fishVect = np.zeros((13))
             fishVect[0] = seglen
-            fishVect[1:] = xVect
+            # These fish are on the bottom plane
+            fishVect[1] = 2
+            fishVect[2:] = xVect
             pts = x_seglen_to_3d_points(xVect, seglen)
             point = pts[:, genFishKeypointToOverlap]
             distance = ogPoint - point
@@ -580,7 +586,7 @@ def generateRandomConfiguration(fishInView, fishInEdges, OverlappingFish):
             # Shifting the fish to cause the overlap
             xVect[0] += distance[0]
             xVect[1] += distance[1]
-            fishVect[1:] = xVect
+            fishVect[2:] = xVect
 
             if not doesThisFishInterfereWithTheAquarium(fishVect, overLappingFishVectList):
 
@@ -591,8 +597,14 @@ def generateRandomConfiguration(fishInView, fishInEdges, OverlappingFish):
                     overLappingFishVectList.append(fishVect)
                     break
 
-    return fishVectList, overLappingFishVectList
+        fish_list = []
+        # Transforming the fish vectors into fish objects
+        for fishVect in fishVectList + overLappingFishVectList:
+            fish = Fish(fishVect)
+            fish_list.append(fish)
 
+    # return fishVectList, overLappingFishVectList
+    return fish_list
 class Fish:
     class BoundingBox:
         BoundingBoxThreshold = Config.boundingBoxThreshold
@@ -626,13 +638,16 @@ class Fish:
 
     def __init__(self, fishVect):
         self.seglen = fishVect[0]
-        self.x = fishVect[1:]
+        self.z = fishVect[1]
+        self.x = fishVect[2:]
 
     def draw(self):
         graymodel, pts = f_x_to_model_bigger(self.x, self.seglen, Config.randomizeFish, imageSizeX, imageSizeY)
 
+        depth = np.ones(pts[0,:].shape) * self.z
 
-        depth_im = createDepthArr(graymodel, pts[0,:], pts[1,:], self.depth)
+        depth_im = createDepthArr(graymodel, pts[0,:], pts[1,:], depth)
+        # TODO: fill out these depth images since for the orthographic projections the fish can have spots
         camera1View = (graymodel, depth_im)
         self.views = [camera1View]
 
@@ -641,6 +656,13 @@ class Fish:
 
         self.vis = np.zeros((pts.shape[1]))
         self.vis[self.valid_points_masks] = 1
+
+        # marking the depth of the points, will be used later to find their visibility
+        marked_depth_at_keypoints = depth_im[self.intYs[self.valid_points_masks],
+                                             self.intXs[self.valid_points_masks]]
+        self.depth = np.zeros(self.xs.shape)
+        self.depth[self.valid_points_masks] = marked_depth_at_keypoints
+
 
         # Creating the bounding box
         nonzero_coors = np.array(np.where(graymodel > 0))
@@ -684,6 +706,20 @@ class Fish:
         val_xs = self.pts[0, :][self.valid_points_masks]
         return val_xs.shape[0]
 
+    def update_visibility(self, finalViews):
+        finalView1 = finalViews[0]
+        finalDepth = finalView1[1]
+
+        previous_marked_depths = self.depth[self.valid_points_masks]
+        final_marked_depths = finalDepth[self.intYs[self.valid_points_masks],
+                                         self.intXs[self.valid_points_masks]]
+        still_vis = final_marked_depths == previous_marked_depths
+
+        # have to do it this way because python is wierd with the references
+        tempVis = np.ones((self.vis).shape)
+        tempVis[self.valid_points_masks] = still_vis
+        self.vis *= tempVis
+
     @property
     def is_valid_fish(self):
         if (self.amount_of_vis_points() >= 1) and self.boundingBox.isValidBox():
@@ -692,66 +728,25 @@ class Fish:
             return False
 
 
-def drawAquarium(fishVectList, overlappingFishVectList=[]):
-    pts_list = []
-    overlap_pts_list = []
+def drawAquarium(fish_list):
+    views_list = []
 
-    fish_list = []
-    overlap_fish_list = []
-    grays = []
-    for fishVect in fishVectList:
-        fish = Fish(fishVect)
+    # drawing the fishes
+    for fish in fish_list:
         fish.draw()
-        fish_list.append(fish)
-        pts_list.append(fish.pts)
-        grays.append(fish.graymodel)
+        views_list.append(fish.views)
 
-    # Merging the grays, just for testing right now
-    canvas = np.zeros((imageSizeY, imageSizeX))
-    for gray in grays:
-        canvas += gray
+    # merging the images
+    finalViews = mergeViews(views_list)
 
-    overlappingGrays = []
-    # now drawing the fishes in the other plane
-    for fishVect in overlappingFishVectList:
-        fish = Fish(fishVect)
-        fish.draw()
-        pts = fish.pts
-        graymodel = fish.graymodel
+    # updating the visibility for the cases where a fish ends up covering another fish
+    for fish in fish_list:
+        fish.update_visibility(finalViews)
 
-        # updating the vis
-        xs = fish.intXs
-        ys = fish.intYs
-        mask = fish.valid_points_masks
-        values_in_canvas = canvas[ys[mask], xs[mask]]
-        mask_mask_blocked_pts = values_in_canvas > 0
-        # The next 4 lines are necessary because python does not allow references, 5th is for clarity
-        # TODO: condense this
-        tempVis = fish.vis
-        tempVis2 = tempVis[mask]
-        tempVis2[mask_mask_blocked_pts] = 0
-        tempVis[mask] = tempVis2
-        fish.vis = tempVis
-        # fish.vis[mask][mask_mask_blocked_pts] = 0
+    finalView1 = finalViews[0]
+    canvas = finalView1[0]
 
-        overlap_fish_list.append(fish)
-
-        overlap_pts_list.append(pts)
-        overlappingGrays.append(graymodel)
-
-    # Merging the grays, just for testing right now
-    overlappingCanvas = np.zeros((imageSizeY, imageSizeX))
-    for gray in overlappingGrays:
-        overlappingCanvas += gray
-
-    # Blurring, the threshold determines at what brightness is a fish considered solid
-    threshold = Config.visibilityThreshold
-    canvas[(canvas < threshold) * (overlappingCanvas > 0)] = \
-        overlappingCanvas[(canvas < threshold) * (overlappingCanvas > 0)]
-    # Merging the two planes now
-    canvas[canvas == 0] = overlappingCanvas[canvas == 0]
-
-    return canvas, fish_list, overlap_fish_list
+    return canvas
 
 
 def add_noise_static_noise(im):
@@ -781,7 +776,7 @@ def add_noise_static_noise(im):
     return im
 
 
-def add_patchy_noise(im, fish_list, overlap_fish_list):
+def add_patchy_noise(im, fish_list):
     imageSizeY, imageSizeX = im.shape[:2]
 
     averageAmountOfPatchyNoise = Config.averageAmountOfPatchyNoise
@@ -793,7 +788,7 @@ def add_patchy_noise(im, fish_list, overlap_fish_list):
             # No really necessary, but just to ensure we do not lose too many
             # patches to fishes barely visible or fishes that do not appear in the view
 
-            idxListOfPatchebleFishes = [idx for idx, fish in enumerate(fish_list + overlap_fish_list) if
+            idxListOfPatchebleFishes = [idx for idx, fish in enumerate(fish_list) if
                                         fish.is_valid_fish]
 
             # idxListOfPatchebleFishes = [idx for idx, fish in enumerate(fishVectList + overlappingFishVectList) if fish.is_valid_fish]
@@ -806,7 +801,7 @@ def add_patchy_noise(im, fish_list, overlap_fish_list):
                 center = np.zeros((2))
                 shouldItGoOnAFish = True if np.random.rand() > .5 else False
                 if shouldItGoOnAFish:
-                    fish = (fish_list + overlap_fish_list)[idxListOfPatchebleFishes[centerIdx]]
+                    fish = (fish_list)[idxListOfPatchebleFishes[centerIdx]]
 
                     # fish = (fishVectList + overlappingFishVectList)[ idxListOfPatchebleFishes[centerIdx] ]
 
@@ -905,18 +900,18 @@ def generate_and_save_data(frame_idx):
         shouldItOverlap = True if np.random.rand() < overlappingFishFrequency else False
         if shouldItOverlap: overlappingFish += 1
 
-    fishVectList, overlappingFishVectList = generateRandomConfiguration(fishesInView, fishesInEdge, overlappingFish)
+    fish_list = generateRandomConfiguration(fishesInView, fishesInEdge, overlappingFish)
 
-    im, fish_list, overlap_fish_list = drawAquarium(fishVectList, overlappingFishVectList)
+    im = drawAquarium(fish_list)
 
     if shouldAddStaticNoise:
         im = add_noise_static_noise(im)
 
     if shouldAddPatchyNoise:
-        im = add_patchy_noise(im, fish_list, overlap_fish_list)
+        im = add_patchy_noise(im, fish_list)
 
     if shouldSaveAnnotations:
-        save_annotations(frame_idx, fish_list + overlap_fish_list)
+        save_annotations(frame_idx, fish_list)
 
     if shouldSaveImages:
         save_image(frame_idx, im)

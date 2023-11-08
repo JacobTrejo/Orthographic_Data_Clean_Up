@@ -11,7 +11,6 @@ red = [0, 0, 255]
 green = [0, 255, 0]
 blue = [255, 0, 0]
 
-
 def turn_text_file_to_data(file):
     f = open(file,'r')
 
@@ -119,8 +118,7 @@ def draw_YOLO_pose_annotations(imageFilePath):
 
     return catResults
 
-
-imageFilePath = 'data/images/train/zebrafish_000000.png'
+imageFilePath = 'data/images/train/zebrafish_000022.png'
 result = draw_YOLO_pose_annotations(imageFilePath)
 cv.imwrite('test.png', result)
 

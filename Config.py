@@ -35,7 +35,7 @@ class Config:
     # This threshold is used when sequential keypoints of a fish have an x or y value that are about the same
     # and stops it from generating a box that captures that part of the fish
     minimumSizeOfBox = 3
-    # The following variable is similar the one above except that it is for the bounding box of the fish passed
+    # The following variable is similar to the one above except that it is for the bounding box of the fish passed
     # to Yolo.  This is necessary because sometimes the fish are barely visible at the edge causing the model to
     # learn to detect the edges as fish
     boundingBoxThreshold = 2
