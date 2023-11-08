@@ -8,6 +8,7 @@ dataDirectory: 'data'
 
 shouldAddPatchyNoise: True
 
-amountOfData: 50000
-fractionForTraining: .9
+# Small values for debugging purposes
+amountOfData: 5
+fractionForTraining: 1
 

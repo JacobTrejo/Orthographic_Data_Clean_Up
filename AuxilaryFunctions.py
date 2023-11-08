@@ -3,6 +3,7 @@ import random
 import numpy as np
 import cv2 as cv
 import imageio
+import time
 from scipy.io import loadmat
 from construct_model import f_x_to_model, f_x_to_model_centered, f_x_to_model_bigger
 from skimage.util import random_noise
@@ -526,14 +527,22 @@ def generateRandomConfiguration(fishInView, fishInEdges, OverlappingFish):
         ogSeglen = fishVectToOverlap[0]
         ogXVect = fishVectToOverlap[1:]
         ogPts = x_seglen_to_3d_points(ogXVect, ogSeglen)
-        # The keypoint idx of the original fish we want to overlap
-        ogFishKeypointToOverlap = np.random.randint(0, 12)
-        ogPoint = ogPts[:, ogFishKeypointToOverlap]
 
-        # The keypoint of the generated fish we want to use to cause the overlap
-        genFishKeypointToOverlap = np.random.randint(0, 12)
-
+        startTime = time.time()
         while True:
+            currentTime = time.time()
+            duration = currentTime - startTime
+            if duration > 120:
+                # It is taking too long to generate a fish that satisfies the configuration, lets move on to the next
+                break
+
+            # The keypoint idx of the original fish we want to overlap
+            ogFishKeypointToOverlap = np.random.randint(0, 12)
+            ogPoint = ogPts[:, ogFishKeypointToOverlap]
+
+            # The keypoint of the generated fish we want to use to cause the overlap
+            genFishKeypointToOverlap = np.random.randint(0, 12)
+
             # Generating the fish
             xVect = np.zeros((11))
             fishlen = (np.random.rand(1) - 0.5) * 30 + averageSizeOfFish
@@ -817,7 +826,7 @@ def save_annotations(frame_idx, fish_list):
     dataDirectory = Config.dataDirectory
 
     subFolder = 'train/' if frame_idx < biggestIdx4TrainingData else 'val/'
-    labelsPath = dataDirectory + '/' + 'labels/' + subFolder
+    labelsPath = dataDirectory + 'labels/' + subFolder
     strIdxInFormat = format(frame_idx, '06d')
     filename = 'zebrafish_' + strIdxInFormat + '.txt'
     labelsPath += filename
@@ -852,7 +861,7 @@ def save_image(frame_idx, im):
     dataDirectory = Config.dataDirectory
 
     subFolder = 'train/' if frame_idx < biggestIdx4TrainingData else 'val/'
-    imagesPath = dataDirectory + '/' + 'images/' + subFolder
+    imagesPath = dataDirectory + 'images/' + subFolder
     strIdxInFormat = format(frame_idx, '06d')
     filename = 'zebrafish_' + strIdxInFormat + '.png'
     imagesPath += filename

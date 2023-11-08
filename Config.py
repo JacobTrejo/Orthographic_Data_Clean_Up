@@ -7,7 +7,7 @@ class Config:
     """
     #   Default values
 
-    # Regular Data Variables
+    # General Variables
     imageSizeY = 640
     imageSizeX = 640
     averageSizeOfFish = 70
@@ -39,7 +39,7 @@ class Config:
     # to Yolo.  This is necessary because sometimes the fish are barely visible at the edge causing the model to
     # learn to detect the edges as fish
     boundingBoxThreshold = 2
-    # value in which the brightness of a fish is considered solid
+    # Value in which the brightness of a fish is considered solid
     visibilityThreshold = 25
 
     # None for now since it is going to get set after checking the yaml file
@@ -72,7 +72,7 @@ class Config:
                 warnings.warn(var + ' is not a valid variable, could be a spelling issue')
 
         Config.biggestIdx4TrainingData = Config.amountOfData * Config.fractionForTraining
-
+        Config.dataDirectory += '/'
 
         # NOTE: the following was just left as an example for now
         # # Writing the variables to the corresponding classes static variables
@@ -82,4 +82,5 @@ class Config:
     # def set_bounding_box_vars():
     #     print('setting the bounding box vars')
 
-config = Config('config.yaml')
+# Setting the variables of the Configuration Class
+Config('config.yaml')
