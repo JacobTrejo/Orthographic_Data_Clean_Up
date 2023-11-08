@@ -37,7 +37,7 @@ for folder in folders:
        if not os.path.exists(subSubPath):
            os.makedirs(subSubPath)
 
-genData(20)
+genData(15)
 # generate_and_save_data(22)
 
 # def init_pool_process():
