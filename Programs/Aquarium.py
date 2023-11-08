@@ -1,9 +1,9 @@
-from Config import Config
+from Programs.Config import Config
 import numpy as np
 import cv2 as cv
-from programsForGeneratingFish import generateRandomConfiguration
-from Auxilary import add_noise_static_noise, add_patchy_noise, mergeViews, createDepthArr
-from programsForDrawingImage import f_x_to_model_bigger
+from Programs.programsForGeneratingFish import generateRandomConfiguration
+from Programs.Auxilary import add_noise_static_noise, add_patchy_noise, mergeViews, createDepthArr
+from Programs.programsForDrawingImage import f_x_to_model_bigger
 # Configuration variables
 imageSizeY, imageSizeX = Config.imageSizeY, Config.imageSizeX
 

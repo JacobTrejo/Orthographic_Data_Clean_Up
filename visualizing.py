@@ -1,7 +1,7 @@
 import numpy as np
 import imageio
 import cv2 as cv
-from Config import Config
+from Programs.Config import Config
 
 # INPUTS
 imageHeight, imageWidth = Config.imageSizeY, Config.imageSizeX
@@ -118,7 +118,8 @@ def draw_YOLO_pose_annotations(imageFilePath):
 
     return catResults
 
-imageFilePath = 'data/images/train/zebrafish_000015.png'
+# Warning: This program currently only works with the parent directory set to data
+imageFilePath = 'data/images/train/zebrafish_000003.png'
 result = draw_YOLO_pose_annotations(imageFilePath)
 cv.imwrite('test.png', result)
 

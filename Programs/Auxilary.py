@@ -1,4 +1,4 @@
-from Config import Config
+from Programs.Config import Config
 import numpy as np
 import numpy.ma as ma
 import cv2 as cv

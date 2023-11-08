@@ -83,4 +83,4 @@ class Config:
     #     print('setting the bounding box vars')
 
 # Setting the variables of the Configuration Class
-Config('config.yaml')
+Config('Inputs/config.yaml')

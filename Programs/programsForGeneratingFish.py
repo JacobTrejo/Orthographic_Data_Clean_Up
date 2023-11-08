@@ -1,4 +1,4 @@
-from Config import Config
+from Programs.Config import Config
 from scipy.io import loadmat
 import random
 import time
@@ -6,7 +6,7 @@ import numpy as np
 
 # Configuration variables
 imageSizeY, imageSizeX = Config.imageSizeY, Config.imageSizeX
-theta_array = loadmat('generated_pose_all_2D_50k.mat')
+theta_array = loadmat('Inputs/generated_pose_all_2D_50k.mat')
 theta_array = theta_array['generated_pose']
 
 # Rotate along x axis. Angles are accepted in radians

@@ -9,6 +9,6 @@ dataDirectory: 'data'
 shouldAddPatchyNoise: True
 shouldAddStaticNoise: True
 # Small values for debugging purposes
-amountOfData: 30
+amountOfData: 5
 fractionForTraining: 1
 
