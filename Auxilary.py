@@ -2,6 +2,57 @@ from Config import Config
 import numpy as np
 import numpy.ma as ma
 import cv2 as cv
+from skimage.util import random_noise
+
+# Auxilary Functions
+def roundHalfUp(a):
+    """
+    Function that rounds the way that matlab would. Necessary for the program to run like the matlab version
+    :param a: numpy array or float
+    :return: input rounded
+    """
+    return (np.floor(a) + np.round(a - (np.floor(a) - 1)) - 1)
+
+
+def uint8(a):
+    """
+    This function is necessary to turn back arrays and floats into uint8.
+    arr.astype(np.uint8) could be used, but it rounds differently than the
+    matlab version.
+    :param a: numpy array or float
+    :return: numpy array or float as an uint8
+    """
+
+    a = roundHalfUp(a)
+    if np.ndim(a) == 0:
+        if a < 0:
+            a = 0
+        if a > 255:
+            a = 255
+    else:
+        a[a > 255] = 255
+        a[a < 0] = 0
+    return a
+
+
+def imGaussNoise(image, mean, var):
+    """
+       Function used to make image have static noise
+
+       Args:
+           image (numpy array): image
+           mean (float): mean
+           var (numpy array): var
+
+       Returns:
+            noisy (numpy array): image with noise applied
+       """
+    row, col = image.shape
+    sigma = var ** 0.5
+    gauss = np.random.normal(mean, sigma, (row, col))
+    gauss = gauss.reshape(row, col)
+    noisy = image + gauss
+    return noisy
 
 
 def createDepthArr(img, xIdx, yIdx, d):
@@ -118,3 +169,89 @@ def mergeViews(views_list):
         finalView = (finalGray, finalDepth)
         finalViews.append(finalView)
     return finalViews
+
+
+def add_noise_static_noise(im):
+    # Adding gaussian noise
+    filter_size = 2 * roundHalfUp(np.random.rand()) + 3
+    sigma = np.random.rand() + 0.5
+    kernel = cv.getGaussianKernel(int(filter_size), sigma)
+    im = cv.filter2D(im, -1, kernel)
+    maxGray = max(im.flatten())
+    if maxGray != 0:
+        # im = im / max(im.flatten())
+        im = im / 255
+
+    else:
+        im[0, 0] = 1
+    im = imGaussNoise(im, (np.random.rand() * np.random.normal(50, 10)) / 255,
+                      (np.random.rand() * 50 + 20) / 255 ** 2)
+    # Converting Back
+    if maxGray != 0:
+        # im = im * (255 / max(im.flatten()))
+        im = im * 255
+    else:
+        im[0, 0] = 0
+        im = im * 255
+    im = uint8(im)
+
+    return im
+
+
+def add_patchy_noise(im, fish_list):
+    imageSizeY, imageSizeX = im.shape[:2]
+
+    averageAmountOfPatchyNoise = Config.averageAmountOfPatchyNoise
+
+    pvar = np.random.poisson(averageAmountOfPatchyNoise)
+    if (pvar > 0):
+
+        for i in range(1, int(np.floor(pvar + 1))):
+            # No really necessary, but just to ensure we do not lose too many
+            # patches to fishes barely visible or fishes that do not appear in the view
+
+            idxListOfPatchebleFishes = [idx for idx, fish in enumerate(fish_list) if
+                                        fish.is_valid_fish]
+
+            # idxListOfPatchebleFishes = [idx for idx, fish in enumerate(fishVectList + overlappingFishVectList) if fish.is_valid_fish]
+            amountOfPossibleCenters = len(idxListOfPatchebleFishes)
+            finalVar_mat = np.zeros((imageSizeY, imageSizeX))
+            amountOfCenters = np.random.randint(0, high=(amountOfPossibleCenters + 1))
+            # print('amount_of_centers: ', amountOfCenters)
+            for centerIdx in range(amountOfCenters):
+                # y, x
+                center = np.zeros((2))
+                shouldItGoOnAFish = True if np.random.rand() > .5 else False
+                if shouldItGoOnAFish:
+                    fish = (fish_list)[idxListOfPatchebleFishes[centerIdx]]
+
+                    # fish = (fishVectList + overlappingFishVectList)[ idxListOfPatchebleFishes[centerIdx] ]
+
+                    boundingBox = fish.boundingBox
+
+                    # boundingBox = boundingBoxList[idxListOfPatchebleFishes[centerIdx]]
+
+                    center[0] = (boundingBox.getHeight() * (np.random.rand() - .5)) + boundingBox.getCenterY()
+                    center[1] = (boundingBox.getWidth() * (np.random.rand() - .5)) + boundingBox.getCenterX()
+                    center = center.astype(int)
+                    # clip just in case we went slightly out of bounds
+                    center[0] = np.clip(center[0], 0, imageSizeY - 1)
+                    center[1] = np.clip(center[1], 0, imageSizeX - 1)
+
+                else:
+                    center[0] = np.random.randint(0, high=imageSizeY)
+                    center[1] = np.random.randint(0, high=imageSizeX)
+
+                zeros_mat = np.zeros((imageSizeY, imageSizeX))
+                zeros_mat[int(center[0]) - 1, int(center[1]) - 1] = 1
+                randi = (2 * np.random.randint(5, high=35)) + 1
+                se = cv.getStructuringElement(cv.MORPH_ELLIPSE, (randi, randi))
+                zeros_mat = cv.dilate(zeros_mat, se)
+                finalVar_mat += zeros_mat
+
+            im = im / 255
+            # gray_b = imnoise(gray_b, 'localvar', var_mat * 3 * (np.random.rand() * 60 + 20) / 255 ** 2)
+            im = random_noise(im, mode='localvar', local_vars=(finalVar_mat * 3 * (
+                    np.random.rand() * 60 + 20) / 255 ** 2) + .00000000000000001)
+            im = im * 255
+    return im
