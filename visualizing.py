@@ -119,7 +119,7 @@ def draw_YOLO_pose_annotations(imageFilePath):
     return catResults
 
 # Warning: This program currently only works with the parent directory set to data
-imageFilePath = 'data/images/train/zebrafish_000003.png'
+imageFilePath = 'data/images/train/zebrafish_000000.png'
 result = draw_YOLO_pose_annotations(imageFilePath)
 cv.imwrite('test.png', result)
 

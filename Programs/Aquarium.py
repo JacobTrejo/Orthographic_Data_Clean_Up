@@ -8,7 +8,45 @@ from Programs.programsForDrawingImage import f_x_to_model_bigger
 imageSizeY, imageSizeX = Config.imageSizeY, Config.imageSizeX
 
 class Aquarium:
-    def __init__(self, frame_idx):
+    # Static Variables
+    aquariumVariables = ['fishInAllViews', 'fishInEdges','overlapping']
+    fishVectListKey = 'fishVectList'
+
+    def overloaded_constructor(self, **kwargs):
+        aquariumVariablesDict = {'fishInAllViews':0, 'fishInEdges':0, 'overlapping':0}
+
+        wasAnAquariumVariableDetected = False
+        wasAnAquariumPassed = False
+        for key in kwargs:
+            if key in Aquarium.aquariumVariables:
+                aquariumVariablesDict[key] = kwargs.get(key)
+                wasAnAquariumVariableDetected = True
+            if key is Aquarium.fishVectListKey:
+                wasAnAquariumPassed = True
+                fishVectList = kwargs.get(key)
+
+        if not wasAnAquariumPassed:
+            if wasAnAquariumVariableDetected:
+                fishVectList = self.generateFishListGivenVariables(aquariumVariablesDict)
+            else:
+                fishesInView = np.random.randint(0, Config.maxFishesInView)
+                fishesInEdge = np.random.poisson(Config.averageFishInEdges)
+                overlappingFish = 0
+                for _ in range(fishesInView + fishesInEdge):
+                    shouldItOverlap = True if np.random.rand() < Config.overlappingFishFrequency else False
+                    if shouldItOverlap: overlappingFish += 1
+                fishVectList = generateRandomConfiguration(fishesInView, fishesInEdge, overlappingFish)
+
+        return fishVectList
+
+    def generateFishListGivenVariables(self, aquariumVariablesDict):
+        fishInAllViews = aquariumVariablesDict.get('fishInAllViews')
+        overlapping = aquariumVariablesDict.get('overlapping')
+        fishInEdges = aquariumVariablesDict.get('fishInEdges')
+        fishVectList = generateRandomConfiguration(fishInAllViews, fishInEdges, overlapping)
+        return fishVectList
+
+    def __init__(self, frame_idx, **kwargs):
         # Getting the configuration settings
         maxFishesInView = Config.maxFishesInView
         averageFishInEdges = Config.averageFishInEdges
@@ -18,15 +56,7 @@ class Aquarium:
         self.shouldSaveAnnotations = Config.shouldSaveAnnotations
         self.shouldSaveImages = Config.shouldSaveImages
 
-        fishesInView = np.random.randint(0, maxFishesInView)
-        fishesInEdge = np.random.poisson(averageFishInEdges)
-        overlappingFish = 0
-        for _ in range(fishesInView + fishesInEdge):
-            shouldItOverlap = True if np.random.rand() < overlappingFishFrequency else False
-            if shouldItOverlap: overlappingFish += 1
-
-
-        fishVectList = generateRandomConfiguration(fishesInView, fishesInEdge, overlappingFish)
+        fishVectList = self.overloaded_constructor(**kwargs)
         self.fish_list = []
         for fishVect in fishVectList:
             fish = Fish(fishVect)
